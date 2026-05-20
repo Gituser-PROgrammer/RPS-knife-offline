@@ -1,6 +1,6 @@
 {
-  "name": "Rock, Paper, Scissors, Knife",
-  "short_name": "RPS Knife",
+  "name": "Rock, Paper, Scissors, Knife OFFLINE",
+  "short_name": "RPS Knife OFFLINE",
   "description": "Rock Paper Scissors but with a twist...",
   "start_url": ".",
   "display": "standalone",
