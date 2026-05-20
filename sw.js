@@ -1,34 +1,78 @@
-const assets = [
-  "./index.html",
-  "./script.js",
-  "./fonts/fugazone-regular-webfont.woff",
-  "./fonts/fugazone-regular-webfont.woff2",
-  "./fonts/righteous-regular-webfont.woff",
-  "./fonts/righteous-regular-webfont.woff2",
-  "./Images/background.webp",
-  "./Images/rock.svg",
-  "./Images/paper.svg",
-  "./Images/scissors.svg",
-  "./Images/knife.svg",
-];
-const cacheName = "cacheStaticAssetsRPSK";
+importScripts("./idb.js");
+importScripts("./assets.js");
 
-self.addEventListener("install", (e) => {
-  e.waitUntil(
-    caches.open(cacheName).then((cache) => {
-      cache.addAll(assets);
-    })
-  );
+self.addEventListener("install", event => {
+  console.log("Installing Service Worker...");
+
+  self.skipWaiting();
+
+  event.waitUntil(updateOfflineFiles());
 });
 
-self.addEventListener("fetch", (e) => {
-  e.respondWith(
-    caches.match(e.request).then((cacheRes) => {
-      return cacheRes || fetch(e.request);
-    })
-  );
+self.addEventListener("activate", event => {
+  console.log("Service Worker Activated");
+
+  event.waitUntil(clients.claim());
 });
 
-self.addEventListener("activate", (e) => {
-  console.log("service worker activated", e);
+self.addEventListener("fetch", event => {
+  event.respondWith(handleRequest(event.request));
 });
+
+async function updateOfflineFiles() {
+  console.log("Updating Offline Files...");
+
+  // clear old files
+  await clearFiles();
+
+  // download fresh files
+  for (const url of ASSETS) {
+    try {
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch ${url}`);
+      }
+
+      const blob = await response.blob();
+
+      await saveFile(url, blob);
+
+      console.log("Saved:", url);
+
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  console.log("Offline Files Updated");
+}
+
+async function handleRequest(request) {
+  const url = new URL(request.url);
+
+  try {
+    // try internet first
+    const networkResponse = await fetch(request);
+
+    return networkResponse;
+
+  } catch {
+
+    console.log("Offline:", url.pathname);
+
+    // fallback to IndexedDB
+    const blob = await getFile(url.pathname);
+
+    if (blob) {
+      return new Response(blob);
+    }
+
+    return new Response("Offline file not found", {
+      status: 404,
+      headers: {
+        "Content-Type": "text/plain"
+      }
+    });
+  }
+}
